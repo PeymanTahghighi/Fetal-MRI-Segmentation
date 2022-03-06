@@ -1,8 +1,10 @@
 #================================================================
 #================================================================
+from copy import deepcopy
 from copyreg import pickle
 import os
 from glob import glob
+from django import conf
 from sklearn.model_selection import KFold
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
@@ -26,7 +28,7 @@ if __name__ == "__main__":
     torch.autograd.profiler.emit_nvtx(False)
     torch.backends.cudnn.benchmark = True
     
-    dataset_slicer(root_path="..\\feta", output_root="...\\2D slice");
+    #dataset_slicer(root_path="D:\PhD\Courses\Image Analysis\Project\Dataset\Pure", output_root="D:\PhD\Courses\Image Analysis\Project\Dataset\\2D slice");
     entire_dataset = np.array(glob("D:\PhD\Courses\Image Analysis\Project\Dataset\\2D slice\\*"));
 
     #for k-fold cross-validation
@@ -48,12 +50,12 @@ if __name__ == "__main__":
     stat_scores = StatScores(num_classes=8, reduce='macro').to(Config.DEVICE);
 
     #for holding fold number
-    f = 0;
+    f = 4;
 
     #load fold from file
     folds = pickle.load(open("fold_data.fd", "rb"));
-    train = folds[0][0];
-    test = folds[0][1];
+    train = folds[4][0];
+    test = folds[4][1];
     #for train,test in kfold.split(entire_dataset):
     print(f"\n==========================================================================\n\
         Starting fold {f}...\
@@ -90,17 +92,19 @@ if __name__ == "__main__":
     best_rec = 0;
     best_f1 = 0;
     best_vs = 0;
+    best_each_class_metrics = 0;
+    best_model_weights = None;
     patience = Config.EARLY_STOPPING_PATIENCE;
     while(True):
 
         train_one_epoch(model, train_loader, loss_func, optimizer, scaler);
 
-        total_train_loss, prec_train, rec_train, f1_train, vs_train = eval_one_epoch(model, 
+        total_train_loss, prec_train, rec_train, f1_train, vs_train, _ = eval_one_epoch(model, 
         train_loader, 
         loss_func,
         stat_scores);
 
-        total_test_loss, prec_test, rec_test, f1_test, vs_test = eval_one_epoch(model, 
+        total_test_loss, prec_test, rec_test, f1_test, vs_test, each_class_metrics = eval_one_epoch(model, 
         test_loader, 
         loss_func,
         stat_scores);
@@ -128,18 +132,25 @@ if __name__ == "__main__":
             best_rec = rec_test;
             best_f1 = f1_test;
             best_vs = vs_test;
+            best_each_class_metrics = each_class_metrics;
+            best_model_weights = deepcopy(model.state_dict);
         
         #if we haven't found a better model, decrease patience
         patience -= 1;
         
         #if we ran out of patience, exit the loop
-        if patience == 0:
-            break;
+        #if patience == 0:
+        break;
     
     print(f"Fold {f}:\nLoss: {best_loss}\t\
             Precision: {best_prec} \
             Recall: {best_rec}\t\
             F1: {best_f1}\t\
             VS: {best_vs}");
+    
+    print(best_each_class_metrics.detach().cpu().numpy());
+
+    #save best model weights
+    pickle.dump(best_model_weights, open(f"model-CE-2D-f{f}.mdl", "wb"));
 
     f += 1;

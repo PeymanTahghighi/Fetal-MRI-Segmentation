@@ -28,4 +28,4 @@ def evaluation_metrics(stats_scores):
     f1 = (2*prec*rec)/(prec+rec+ 1e-6);
     vs = 1 - (torch.abs(fn - fp))/(2*tp + fp+ fn);
 
-    return torch.mean(prec), torch.mean(rec), torch.mean(f1), torch.mean(vs);
+    return torch.mean(prec), torch.mean(rec), torch.mean(f1), torch.mean(vs), torch.cat([prec.unsqueeze(0), rec.unsqueeze(0), f1.unsqueeze(0), vs.unsqueeze(0)]);
