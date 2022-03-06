@@ -7,6 +7,7 @@ from tqdm import tqdm
 import torch.nn.functional as F
 import Config
 from Utility import evaluation_metrics
+from Loss import dice_loss
 #================================================================================
 #================================================================================
 
@@ -23,7 +24,8 @@ def train_one_epoch(model, loader, critic, optimizer, scaler):
             mri,seg = mri.to(Config.DEVICE), seg.to(Config.DEVICE);
             
             output = model(mri);
-            loss = critic(output, seg.squeeze(dim=3).long());
+            #loss = critic(output, seg.squeeze(dim=3).long());
+            loss = dice_loss(output, seg, arange_logits=True, acitvation=True);
 
             scaler.scale(loss).backward();
             scaler.step(optimizer);
@@ -59,11 +61,12 @@ def eval_one_epoch(model, loader, critic, stat_scores):
                 mri,seg = mri.to(Config.DEVICE), seg.to(Config.DEVICE);
 
                 output = model(mri);
-                loss = critic(output, seg.squeeze(dim=3).long());
-                output = torch.argmax(torch.softmax(output, dim = 1), dim=1); 
+                #loss = critic(output, seg.squeeze(dim=3).long());
+                loss = dice_loss(output, seg, arange_logits=True, acitvation=True);
 
                 total_loss += loss.item();
 
+                output = torch.argmax(torch.softmax(output, dim = 1), dim=1); 
                 # #accumulate outputs for final evaluation
                 if first is True:
                     total_stats = stat_scores(output.flatten(), seg.flatten().long());
@@ -72,7 +75,6 @@ def eval_one_epoch(model, loader, critic, stat_scores):
                     total_stats += stat_scores(output.flatten(), seg.flatten().long());
                 #--------------------------------
                 count += 1;
-                break;
                 pass
 
     
