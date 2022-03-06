@@ -72,13 +72,13 @@ def eval_one_epoch(model, loader, critic, stat_scores):
                     total_stats += stat_scores(output.flatten(), seg.flatten().long());
                 #--------------------------------
                 count += 1;
-
+                break;
                 pass
 
     
     total_loss /= count;
     
-    prec, rec, f1, vs = evaluation_metrics(total_stats);
+    prec, rec, f1, vs, each_class = evaluation_metrics(total_stats);
 
-    return total_loss, prec, rec, f1, vs;
+    return total_loss, prec, rec, f1, vs, each_class;
 #================================================================================
